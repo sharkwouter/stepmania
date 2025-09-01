@@ -24,7 +24,6 @@ jobs:
           libx11-dev
           libxrandr-dev
           libxtst-dev
-          nasm
       - name: Configure
         run: cmake -B build
       - name: Build
@@ -37,7 +36,6 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y
-          ffmpeg
           libasound2-dev
           libgl-dev
           libglew-dev
@@ -60,7 +58,6 @@ jobs:
           ninja-build
       - name: Configure
         run: cmake -G Ninja -B build
-          -DWITH_SYSTEM_FFMPEG=ON
           -DWITH_SYSTEM_GLEW=ON
           -DWITH_SYSTEM_JPEG=ON
           -DWITH_SYSTEM_JSONCPP=ON
