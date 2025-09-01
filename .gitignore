@@ -167,6 +167,7 @@ Data/SpeedMods.txt
 crashinfo.txt
 Utils/temp*
 Program/StepMania*.lib
+extern/libpng/pnglibconf.h
 
 # Unknown File Types
 *.dia
