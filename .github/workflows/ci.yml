@@ -45,6 +45,7 @@ jobs:
           libjack-dev
           libjsoncpp-dev
           libmad0-dev
+          libpcre3-dev
           libpng-dev
           libpulse-dev
           libtomcrypt-dev
