@@ -17,6 +17,7 @@ StepMania.workspace
 version.hpp
 Build/*
 Build/*/*
+build/
 Debug/
 Release/
 Contents/
