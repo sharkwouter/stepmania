@@ -148,7 +148,7 @@ if(WITH_SSE2)
   elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
     set(SM_COMPILE_FLAGS "${SM_COMPILE_FLAGS} -mtune=cortex-a72")
   else()
-    message("Unrecognized host processor type")
+    message("Unrecognized host processor type ${CMAKE_SYSTEM_PROCESSOR}")
   endif()
 endif()
 
