@@ -1,4 +1,4 @@
-if(NOT GTK3_FOUND)
+if(NOT HAS_GTK3)
   return()
 endif()
 
