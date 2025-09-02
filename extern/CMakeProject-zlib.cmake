@@ -2,6 +2,7 @@ if(WITH_SYSTEM_ZLIB)
   find_package(ZLIB REQUIRED)
 else()
   
+  set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "Never build shared libs" FORCE)
   set(ZLIB_BUILD_SHARED OFF CACHE INTERNAL "Only build zlib static")
   set(ZLIB_BUILD_STATIC ON CACHE INTERNAL "Only build zlib static")
   set(ZLIB_INSTALL OFF CACHE INTERNAL "No installing is needed for zlib")
