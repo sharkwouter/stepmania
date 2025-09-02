@@ -14,7 +14,6 @@ else()
     GIT_SHALLOW TRUE
     # PATCH_COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/png.patch
     # UPDATE_DISCONNECTED 1
-    OVERRIDE_FIND_PACKAGE
   )
   FetchContent_MakeAvailable(PNG)
 endif()
