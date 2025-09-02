@@ -14,4 +14,5 @@ else()
     UPDATE_DISCONNECTED 1
   )
   FetchContent_MakeAvailable(ZLIB)
+  include_directories(${CMAKE_BUILD_DIR}/_deps/zlib-src/)
 endif()
