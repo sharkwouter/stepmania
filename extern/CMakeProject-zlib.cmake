@@ -13,4 +13,8 @@ else()
   if(MACOSX)
     sm_add_compile_definition("zlibstatic" HAVE_UNISTD_H)
   endif(MACOSX)
+
+  set(ZLIB_FOUND TRUE)
+  set(ZLIB_LIBRARY zlibstatic)
+  set(ZLIB_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/extern/zlib)
 endif()
