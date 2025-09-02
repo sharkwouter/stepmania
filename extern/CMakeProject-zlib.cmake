@@ -1,6 +1,7 @@
 if(WITH_SYSTEM_ZLIB)
   find_package(ZLIB REQUIRED)
 else()
+  set(ZLIB_BUILD_EXAMPLES OFF)
   include(FetchContent)
   FetchContent_Declare(ZLIB
     GIT_REPOSITORY https://github.com/madler/zlib.git
