@@ -12,7 +12,6 @@ else()
     GIT_REPOSITORY https://github.com/pnggroup/libpng.git
     GIT_TAG v1.6.50
     GIT_SHALLOW TRUE
-    PATCH_COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/png.patch
     UPDATE_DISCONNECTED 1
   )
   FetchContent_MakeAvailable(PNG)

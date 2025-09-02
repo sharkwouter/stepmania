@@ -12,6 +12,7 @@ else()
     GIT_SHALLOW TRUE
     PATCH_COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/zlib.patch
     UPDATE_DISCONNECTED 1
+    OVERRIDE_FIND_PACKAGE
   )
   FetchContent_MakeAvailable(ZLIB)
   include_directories(${CMAKE_BUILD_DIR}/_deps/zlib-src/)

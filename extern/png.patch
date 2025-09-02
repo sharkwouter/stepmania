@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index d91e3a6c3..37115fdc6 100644
+index d91e3a6c3..00dec13bf 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -137,9 +137,11 @@ if(PNG_BUILD_ZLIB)
@@ -17,11 +17,3 @@ index d91e3a6c3..37115fdc6 100644
  
  # Find the math library (unless we already know it's not available or
  # not needed).
-@@ -507,6 +509,7 @@ else()
-   endif()
- 
-   generate_out(INPUT "${CMAKE_CURRENT_BINARY_DIR}/pnglibconf.c"
-+               DEPENDS "${ZLIB_SOURCE_DIR}/zlib.h"
-                OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/pnglibconf.out")
- 
-   # Generate pnglibconf.h
