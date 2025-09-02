@@ -8,7 +8,7 @@ else()
   set(SKIP_INSTALL_ALL ON)
   # set(BUILD_SHARED_LIBS OFF)
   include(FetchContent)
-  FetchContent_Declare(ZLIB
+  FetchContent_Declare(ZLIB::ZLIB
     GIT_REPOSITORY https://github.com/madler/zlib.git
     GIT_TAG v1.3.1
     GIT_SHALLOW TRUE
