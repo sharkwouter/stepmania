@@ -3,8 +3,11 @@ if(WITH_SYSTEM_ZLIB)
 else()
   
   set(ZLIB_BUILD_SHARED OFF CACHE INTERNAL "Only build zlib static")
+  set(ZLIB_BUILD_STATIC ON CACHE INTERNAL "Only build zlib static")
   set(ZLIB_INSTALL OFF CACHE INTERNAL "No installing is needed for zlib")
   set(ZLIB_INSTALL_COMPAT_DLL OFF CACHE INTERNAL "No dll build is needed for zlib")
+  set(ZLIB_BUILD_TESTS OFF CACHE INTERNAL "No tests build is needed for zlib")
+  set(ZLIB_BUILD_EXAMPLES OFF CACHE INTERNAL "No examples build is needed for zlib")
   add_subdirectory(zlib)
 
   if(MSVC)
