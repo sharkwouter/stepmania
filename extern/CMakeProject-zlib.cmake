@@ -1,25 +1,11 @@
 if(WITH_SYSTEM_ZLIB)
   find_package(ZLIB REQUIRED)
 else()
-  
-  set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "Never build shared libs" FORCE)
-  set(ZLIB_BUILD_SHARED OFF CACHE INTERNAL "Only build zlib static")
-  set(ZLIB_BUILD_STATIC ON CACHE INTERNAL "Only build zlib static")
-  set(ZLIB_INSTALL OFF CACHE INTERNAL "No installing is needed for zlib")
-  set(ZLIB_INSTALL_COMPAT_DLL OFF CACHE INTERNAL "No dll build is needed for zlib")
-  set(ZLIB_BUILD_TESTS OFF CACHE INTERNAL "No tests build is needed for zlib")
-  set(ZLIB_BUILD_EXAMPLES OFF CACHE INTERNAL "No examples build is needed for zlib")
-  add_subdirectory(zlib)
-
-  if(MSVC)
-    sm_add_compile_definition("zlibstatic" _MBCS)
-  endif(MSVC)
-  if(MACOSX)
-    sm_add_compile_definition("zlibstatic" HAVE_UNISTD_H)
-  endif(MACOSX)
-
-  set(ZLIB_FOUND TRUE)
-  set(ZLIB_LIBRARY zlibstatic)
-  set(ZLIB_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/extern/zlib)
-  set(ZLIB_INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/extern/zlib)
+  include(FetchContent)
+  FetchContent_Declare(zlib
+    GIT_REPOSITORY https://github.com/madler/zlib.git
+    GIT_TAG v1.3.1
+    GIT_SHALLOW TRUE
+  )
+  FetchContent_MakeAvailable(zlib)
 endif()
