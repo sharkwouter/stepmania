@@ -727,45 +727,12 @@ endif()
 
 target_include_directories("${SM_EXE_NAME}" PUBLIC ${SM_INCLUDE_DIRS})
 
-if(WIN32)
-  set(SM_INSTALL_DESTINATION ".")
-else()
+if(UNIX OR LINUX)
   set(SM_INSTALL_DESTINATION "stepmania-5.1")
-endif()
 
-if(NOT APPLE)
-  if(WIN32)
-    set(SM_FULL_INSTALLATION_PATH_LIST "${SM_INSTALL_DESTINATION}" "Program")
-    sm_join("${SM_FULL_INSTALLATION_PATH_LIST}" "/" SM_FULL_INSTALLATION_PATH)
-    # Hardcoding the values for now since the foreach loop is not working as
-    # intended.
-    install(TARGETS "${SM_EXE_NAME}" DESTINATION "${SM_FULL_INSTALLATION_PATH}")
-    if(WITH_FULL_RELEASE OR WITH_TEXTURE_GENERATOR)
-      install(FILES "${SM_PROGRAM_DIR}/Texture Font Generator.exe"
-              DESTINATION "${SM_FULL_INSTALLATION_PATH}")
-    endif()
-    install(FILES "${SM_PROGRAM_DIR}/avcodec-55.dll"
-            DESTINATION "${SM_FULL_INSTALLATION_PATH}")
-    install(FILES "${SM_PROGRAM_DIR}/avformat-55.dll"
-            DESTINATION "${SM_FULL_INSTALLATION_PATH}")
-    install(FILES "${SM_PROGRAM_DIR}/avutil-52.dll"
-            DESTINATION "${SM_FULL_INSTALLATION_PATH}")
-    install(FILES "${SM_PROGRAM_DIR}/parallel_lights_io.dll"
-            DESTINATION "${SM_FULL_INSTALLATION_PATH}")
-    install(FILES "${SM_PROGRAM_DIR}/swscale-2.dll"
-            DESTINATION "${SM_FULL_INSTALLATION_PATH}")
-    install(FILES "${SM_PROGRAM_DIR}/StepMania.vdi"
-            DESTINATION "${SM_FULL_INSTALLATION_PATH}")
-
-    # foreach(SM_WINDOW_DLL "${SM_WINDOWS_PROGRAM_DLLS}") install(FILES
-    # "${SM_WINDOW_DLL}" DESTINATION "${SM_INSTALL_DESTINATION}") endforeach()
-  else()
-    install(TARGETS "${SM_EXE_NAME}" DESTINATION "${SM_INSTALL_DESTINATION}")
-  endif()
-  if(UNIX OR LINUX)
-    install(FILES "${SM_ROOT_DIR}/GtkModule.so"
-            LIBRARY DESTINATION "${SM_INSTALL_DESTINATION}" OPTIONAL)
-  endif()
+  install(TARGETS "${SM_EXE_NAME}" DESTINATION "${SM_INSTALL_DESTINATION}")
+  install(FILES "${SM_ROOT_DIR}/GtkModule.so"
+          LIBRARY DESTINATION "${SM_INSTALL_DESTINATION}" OPTIONAL)
   install(DIRECTORY "${SM_ROOT_DIR}/Announcers"
           DESTINATION "${SM_INSTALL_DESTINATION}")
   install(DIRECTORY "${SM_ROOT_DIR}/BGAnimations"
