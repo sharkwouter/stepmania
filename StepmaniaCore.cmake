@@ -384,8 +384,13 @@ elseif(LINUX)
     set(HAS_X11 TRUE)
   endif()
 
-  find_package("ZLIB" REQUIRED)
-  find_package("JPEG" REQUIRED)
+  if (WITH_SYSTEM_ZLIB)
+    find_package("ZLIB" REQUIRED)
+  endif()
+
+  if (WITH_SYSTEM_JPEG)
+    find_package("JPEG" REQUIRED)
+  endif()
 
   find_package(Dl)
 
