@@ -1,6 +1,4 @@
 if(WITH_SYSTEM_ZLIB)
-  find_package(ZLIB REQUIRED)
-else()
   set(ZLIB_BUILD_EXAMPLES OFF)
   set(ZLIB_BUILD_SHARED OFF)
   set(SKIP_INSTALL_ALL ON)
@@ -15,5 +13,5 @@ else()
     OVERRIDE_FIND_PACKAGE
   )
   FetchContent_MakeAvailable(ZLIB)
-  include_directories(${CMAKE_BUILD_DIR}/_deps/zlib-src/)
 endif()
+find_package(ZLIB REQUIRED)
