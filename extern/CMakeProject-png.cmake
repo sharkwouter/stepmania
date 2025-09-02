@@ -29,5 +29,5 @@ else()
     # PATCH_COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/png.patch
     # UPDATE_DISCONNECTED 1
   )
-  FetchContent_MakeAvailable(ZLIB PNG)
+  FetchContent_MakeAvailable(PNG ZLIB)
 endif()
