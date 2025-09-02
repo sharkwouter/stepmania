@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index d91e3a6c3..1a4d0c869 100644
+index d91e3a6c3..8f1ea56c5 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -137,9 +137,11 @@ if(PNG_BUILD_ZLIB)
@@ -17,12 +17,11 @@ index d91e3a6c3..1a4d0c869 100644
  
  # Find the math library (unless we already know it's not available or
  # not needed).
-@@ -711,6 +713,8 @@ if(PNG_STATIC)
-                                    DEBUG_POSTFIX "${PNG_DEBUG_POSTFIX}")
-   target_include_directories(png_static
-                              PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>")
-+  target_include_directories(png_static
-+                             PUBLIC "${ZLIB_SOURCE_DIR}")
-   target_include_directories(png_static
-                              PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>")
-   target_include_directories(png_static
+@@ -507,6 +509,7 @@ else()
+   endif()
+ 
+   generate_out(INPUT "${CMAKE_CURRENT_BINARY_DIR}/pnglibconf.c"
++               DEPENDS "${ZLIB_SOURCE_DIR}"
+                OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/pnglibconf.out")
+ 
+   # Generate pnglibconf.h
