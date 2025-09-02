@@ -1,0 +1,31 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 15ceebe..0713e71 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -6,6 +6,7 @@ project(zlib C)
+ set(VERSION "1.3.1")
+ 
+ option(ZLIB_BUILD_EXAMPLES "Enable Zlib Examples" ON)
++option(ZLIB_BUILD_SHARED "Build shared Zlib library" ON)
+ 
+ set(INSTALL_BIN_DIR "${CMAKE_INSTALL_PREFIX}/bin" CACHE PATH "Installation directory for executables")
+ set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib" CACHE PATH "Installation directory for libraries")
+@@ -149,12 +150,14 @@ if(MINGW)
+     set(ZLIB_DLL_SRCS ${CMAKE_CURRENT_BINARY_DIR}/zlib1rc.obj)
+ endif(MINGW)
+ 
+-add_library(zlib SHARED ${ZLIB_SRCS} ${ZLIB_DLL_SRCS} ${ZLIB_PUBLIC_HDRS} ${ZLIB_PRIVATE_HDRS})
+-target_include_directories(zlib PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
++if (ZLIB_BUILD_SHARED)
++    add_library(zlib SHARED ${ZLIB_SRCS} ${ZLIB_DLL_SRCS} ${ZLIB_PUBLIC_HDRS} ${ZLIB_PRIVATE_HDRS})
++    target_include_directories(zlib PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
++    set_target_properties(zlib PROPERTIES DEFINE_SYMBOL ZLIB_DLL)
++    set_target_properties(zlib PROPERTIES SOVERSION 1)
++endif()
+ add_library(zlibstatic STATIC ${ZLIB_SRCS} ${ZLIB_PUBLIC_HDRS} ${ZLIB_PRIVATE_HDRS})
+ target_include_directories(zlibstatic PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+-set_target_properties(zlib PROPERTIES DEFINE_SYMBOL ZLIB_DLL)
+-set_target_properties(zlib PROPERTIES SOVERSION 1)
+ 
+ if(NOT CYGWIN)
+     # This property causes shared libraries on Linux to have the full version
