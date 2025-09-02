@@ -8,6 +8,7 @@ else()
   set(PNG_TOOLS OFF CACHE INTERNAL "Do not build png tools")
   set(ZLIB_ROOT "${CMAKE_SOURCE_DIR}/extern/zlib" CACHE INTERNAL "Allow libpng to use zlib directory")
   set(PNG_LINK_LIBRARIES "zlibstatic" CACHE INTERNAL "Allow libpng to use zlib directory" FORCE)
+  include_directories("${CMAKE_SOURCE_DIR}/extern/zlib")
   add_subdirectory(libpng)
 
   if(MSVC)
