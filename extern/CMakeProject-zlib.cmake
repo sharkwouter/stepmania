@@ -4,7 +4,6 @@ else()
   set(ZLIB_BUILD_EXAMPLES OFF)
   set(ZLIB_BUILD_SHARED OFF)
   set(SKIP_INSTALL_ALL ON)
-  # set(BUILD_SHARED_LIBS OFF)
   include(FetchContent)
   FetchContent_Declare(ZLIB
     GIT_REPOSITORY https://github.com/madler/zlib.git
