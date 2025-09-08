@@ -260,12 +260,6 @@ if HAVE_FFMPEG
  MovieTexture += arch/MovieTexture/MovieTexture_FFMpeg.cpp arch/MovieTexture/MovieTexture_FFMpeg.h
 endif
 
-if HAVE_GTK
- # XXX We need a GTK DialogDriver for Linux
- LoadingWindow += arch/LoadingWindow/LoadingWindow_Gtk.cpp arch/LoadingWindow/LoadingWindow_Gtk.h \
-		arch/LoadingWindow/LoadingWindow_GtkModule.h
-endif
-
 if HAVE_JACK
  Sound += arch/Sound/RageSoundDriver_JACK.cpp arch/Sound/RageSoundDriver_JACK.h
 endif

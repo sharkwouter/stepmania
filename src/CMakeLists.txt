@@ -22,7 +22,6 @@ include(CMakeData-os.cmake)
 include(CMakeData-actor.cmake)
 include(CMakeData-screen.cmake)
 include(CMakeData-data.cmake)
-include(CMakeData-gtk.cmake)
 include(CMakeData-file-types.cmake)
 include(CMakeData-globals.cmake)
 include(CMakeData-singletons.cmake)
@@ -412,10 +411,6 @@ else() # Linux
     sm_add_compile_definition("${SM_EXE_NAME}" BSD)
   endif()
 
-  if(GTK3_FOUND)
-    sm_add_compile_definition("${SM_EXE_NAME}" HAVE_GTK)
-  endif()
-
   sm_add_compile_definition("${SM_EXE_NAME}" UNIX)
   if("${CMAKE_SYSTEM}" MATCHES "Linux")
     sm_add_compile_definition("${SM_EXE_NAME}" LINUX)
@@ -593,10 +588,6 @@ else() # Unix / Linux TODO: Remember to find and locate the zip archive files.
 
   list(APPEND SMDATA_LINK_LIB "${OPENGL_LIBRARY}")
 
-  if(GTK3_FOUND)
-    list(APPEND SMDATA_LINK_LIB "${GTK3_LIBRARIES}")
-  endif()
-
   list(APPEND SMDATA_LINK_LIB "${BZIP2_LIBRARIES}" "${CMAKE_THREAD_LIBS_INIT}")
 
   if(HAS_ALSA)
@@ -687,9 +678,6 @@ if(NOT APPLE)
         list(APPEND SM_INCLUDE_DIRS "${SM_FFMPEG_SRC_DIR}" "${SM_FFMPEG_ROOT}")
       endif()
     endif()
-    if(HAS_GTK3)
-      list(APPEND SM_INCLUDE_DIRS "${GTK3_INCLUDE_DIRS}")
-    endif()
     if(X11_FOUND)
       list(APPEND SM_INCLUDE_DIRS "${X11_INCLUDE_DIR}")
     endif()
@@ -761,10 +749,6 @@ if(NOT APPLE)
     # "${SM_WINDOW_DLL}" DESTINATION "${SM_INSTALL_DESTINATION}") endforeach()
   else()
     install(TARGETS "${SM_EXE_NAME}" DESTINATION "${SM_INSTALL_DESTINATION}")
-  endif()
-  if(UNIX OR LINUX)
-    install(FILES "${SM_ROOT_DIR}/GtkModule.so"
-            LIBRARY DESTINATION "${SM_INSTALL_DESTINATION}" OPTIONAL)
   endif()
   install(DIRECTORY "${SM_ROOT_DIR}/Announcers"
           DESTINATION "${SM_INSTALL_DESTINATION}")

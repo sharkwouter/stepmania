@@ -30,9 +30,6 @@
 #include "MemoryCard/MemoryCardDriverThreaded_Linux.h"
 #endif
 
-#if defined(HAVE_GTK)
-#include "LoadingWindow/LoadingWindow_Gtk.h"
-#endif
 #if defined(LINUX)
 #define DEFAULT_INPUT_DRIVER_LIST "X11,LinuxEvent,LinuxJoystick"
 #else

@@ -184,13 +184,6 @@ else()
                 "arch/LoadingWindow/LoadingWindow_MacOSX.mm")
     list(APPEND SMDATA_ARCH_LOADING_HPP
                 "arch/LoadingWindow/LoadingWindow_MacOSX.h")
-  elseif(LINUX)
-    if(GTK3_FOUND)
-      list(APPEND SMDATA_ARCH_LOADING_SRC
-                  "arch/LoadingWindow/LoadingWindow_Gtk.cpp")
-      list(APPEND SMDATA_ARCH_LOADING_HPP
-                  "arch/LoadingWindow/LoadingWindow_Gtk.h")
-    endif()
   endif()
 endif()
 

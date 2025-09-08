@@ -8,11 +8,11 @@ LoadingWindow *LoadingWindow::Create()
 {
 	if( !PREFSMAN->m_bShowLoadingWindow )
 		return new LoadingWindow_Null;
-#if defined(UNIX) && !defined(HAVE_GTK)
+#if defined(UNIX)
 	return new LoadingWindow_Null;
 #endif
 	// Don't load nullptr by default.
-	const RString drivers = "win32,macosx,gtk";
+	const RString drivers = "win32,macosx";
 	vector<RString> DriversToTry;
 	split( drivers, ",", DriversToTry, true );
 
@@ -27,9 +27,6 @@ LoadingWindow *LoadingWindow::Create()
 
 #ifdef USE_LOADING_WINDOW_MACOSX
 		if( !DriversToTry[i].CompareNoCase("MacOSX") )	ret = new LoadingWindow_MacOSX;
-#endif
-#ifdef USE_LOADING_WINDOW_GTK
-		if( !DriversToTry[i].CompareNoCase("Gtk") )	ret = new LoadingWindow_Gtk;
 #endif
 #ifdef USE_LOADING_WINDOW_WIN32
 		if( !DriversToTry[i].CompareNoCase("Win32") )	ret = new LoadingWindow_Win32;
