@@ -14,7 +14,6 @@ else()
               "zlib/inffast.c"
               "zlib/inflate.c"
               "zlib/inftrees.c"
-              "zlib/minigzip.c"
               "zlib/trees.c"
               "zlib/uncompr.c"
               "zlib/zutil.c")
