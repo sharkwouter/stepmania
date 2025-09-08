@@ -2,10 +2,19 @@ if(WITH_SYSTEM_PNG)
   find_package(PNG REQUIRED)
   set(PNG_LIBRARIES ${PNG_LIBRARIES} PARENT_SCOPE)
 else()
-  # Set definitions and sources for ARM.
-  if(PNG_TARGET_ARCHITECTURE MATCHES "^(arm|aarch)")
-    add_definitions(-DPNG_ARM_NEON_OPT=0)
+  if(APPLE AND CMAKE_OSX_ARCHITECTURES)
+    string(TOLOWER "${CMAKE_OSX_ARCHITECTURES}" PNG_TARGET_ARCHITECTURE)
+  else()
+    string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" PNG_TARGET_ARCHITECTURE)
   endif()
+  if(PNG_TARGET_ARCHITECTURE MATCHES "^(arm64|aarch64)")
+    set(libpng_arm_sources
+          "libpng/arm/arm_init.c"
+          "libpng/arm/filter_neon_intrinsics.c"
+          "libpng/arm/palette_neon_intrinsics.c")
+    add_definitions(-DPNG_ARM_NEON_OPT=2)
+  endif()
+
   set(PNG_SRC
       "libpng/png.c"
       "libpng/pngerror.c"
@@ -22,7 +31,8 @@ else()
       "libpng/pngwio.c"
       "libpng/pngwrite.c"
       "libpng/pngwtran.c"
-      "libpng/pngwutil.c")
+      "libpng/pngwutil.c"
+      ${libpng_arm_sources})
 
   configure_file("libpng/scripts/pnglibconf.h.prebuilt"
                  "libpng/pnglibconf.h"
