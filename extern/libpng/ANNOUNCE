@@ -1,5 +1,5 @@
-libpng 1.6.37 - April 14, 2019
-==============================
+libpng 1.6.50 - July 1, 2025
+============================
 
 This is a public release of libpng, intended for use in production code.
 
@@ -9,13 +9,13 @@ Files available for download
 
 Source files with LF line endings (for Unix/Linux):
 
- * libpng-1.6.37.tar.xz (LZMA-compressed, recommended)
- * libpng-1.6.37.tar.gz
+ * libpng-1.6.50.tar.xz (LZMA-compressed, recommended)
+ * libpng-1.6.50.tar.gz (deflate-compressed)
 
 Source files with CRLF line endings (for Windows):
 
- * lp1637.7z (LZMA-compressed, recommended)
- * lp1637.zip
+ * lpng1650.7z (LZMA-compressed, recommended)
+ * lpng1650.zip (deflate-compressed)
 
 Other information:
 
@@ -25,20 +25,18 @@ Other information:
  * TRADEMARK.md
 
 
-Changes since the previous public release (version 1.6.36)
-----------------------------------------------------------
+Changes from version 1.6.49 to version 1.6.50
+---------------------------------------------
 
- * Fixed a use-after-free vulnerability (CVE-2019-7317) in png_image_free.
- * Fixed a memory leak in the ARM NEON implementation of png_do_expand_palette.
- * Fixed a memory leak in pngtest.c.
- * Fixed two vulnerabilities (CVE-2018-14048, CVE-2018-14550) in
-   contrib/pngminus; refactor.
- * Changed the license of contrib/pngminus to MIT; refresh makefile and docs.
-   (Contributed by Willem van Schaik)
- * Fixed a typo in the libpng license v2.
-   (Contributed by Miguel Ojeda)
- * Added makefiles for AddressSanitizer-enabled builds.
- * Cleaned up various makefiles.
+ * Improved the detection of the RVV Extension on the RISC-V platform.
+   (Contributed by Filip Wasil)
+ * Replaced inline ASM with C intrinsics in the RVV code.
+   (Contributed by Filip Wasil)
+ * Fixed a decoder defect in which unknown chunks trailing IDAT, set
+   to go through the unknown chunk handler, incorrectly triggered
+   out-of-place IEND errors.
+   (Contributed by John Bowler)
+ * Fixed the CMake file for cross-platform builds that require `libm`.
 
 
 Send comments/corrections/commendations to png-mng-implement at lists.sf.net.
