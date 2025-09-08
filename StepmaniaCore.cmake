@@ -372,7 +372,10 @@ elseif(LINUX)
   endif()
 
   find_package("ZLIB" REQUIRED)
-  find_package("JPEG" REQUIRED)
+
+  if (WITH_SYSTEM_JPEG)
+    find_package("JPEG" REQUIRED)
+  endif()
 
   find_package(Dl)
 
