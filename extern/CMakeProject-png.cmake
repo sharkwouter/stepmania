@@ -2,6 +2,10 @@ if(WITH_SYSTEM_PNG)
   find_package(PNG REQUIRED)
   set(PNG_LIBRARIES ${PNG_LIBRARIES} PARENT_SCOPE)
 else()
+  # Set definitions and sources for ARM.
+  if(PNG_TARGET_ARCHITECTURE MATCHES "^(arm|aarch)")
+    add_definitions(-DPNG_ARM_NEON_OPT=0)
+  endif()
   set(PNG_SRC
       "libpng/png.c"
       "libpng/pngerror.c"
