@@ -22,7 +22,7 @@ index d91e3a6c3..81d41c0e2 100644
    target_include_directories(png_static
                               PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>")
 +  target_include_directories(png_static
-+                             PUBLIC "${ZLIB_SOURCE_DIR}")
++                             PUBLIC "${ZLIB_INCLUDE_DIR}")
    target_include_directories(png_static
                               SYSTEM
                               INTERFACE "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/libpng${PNGLIB_ABI_VERSION}>")

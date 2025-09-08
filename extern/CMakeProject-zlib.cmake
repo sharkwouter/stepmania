@@ -1,4 +1,4 @@
-if(WITH_SYSTEM_ZLIB)
+if(WITH_SYSTEM_ZLIB AND WITH_SYSTEM_PNG)
   find_package(ZLIB REQUIRED)
 else()
   set(ZLIB_BUILD_EXAMPLES OFF)
@@ -13,4 +13,5 @@ else()
     UPDATE_DISCONNECTED 1
   )
   FetchContent_MakeAvailable(ZLIB)
+  message("Source dir from zlib perspective ${ZLIB_INCLUDE_DIR}")
 endif()
