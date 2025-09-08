@@ -41,6 +41,7 @@ jobs:
           libgl-dev
           libglew-dev
           libjack-dev
+          libjpeg-dev
           libjsoncpp-dev
           libmad0-dev
           libpcre3-dev
