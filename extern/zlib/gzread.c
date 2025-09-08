@@ -5,7 +5,7 @@
 
 #include "gzguts.h"
 
-#ifdef _POSIX_SOURCE
+#ifndef _WIN32
 #  include <unistd.h>
 #endif
 
