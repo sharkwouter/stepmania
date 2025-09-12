@@ -618,7 +618,7 @@ else() # Unix / Linux TODO: Remember to find and locate the zip archive files.
   endif()
 
   if(SDL2_FOUND)
-    list(APPEND SMDATA_LINK_LIB ${SDL2_LIBRARY})
+    list(APPEND SMDATA_LINK_LIB ${SDL2_LIBRARIES})
     sm_add_compile_definition("${SM_EXE_NAME}" HAVE_SDL)
   endif()
 

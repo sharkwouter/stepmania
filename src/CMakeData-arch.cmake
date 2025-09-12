@@ -172,7 +172,12 @@ source_group("Arch Specific\\\\Low Level Window"
 list(APPEND SMDATA_ARCH_LOADING_SRC "arch/LoadingWindow/LoadingWindow.cpp")
 list(APPEND SMDATA_ARCH_LOADING_HPP "arch/LoadingWindow/LoadingWindow.h")
 
-if(WIN32)
+if (HAS_SDL)
+  list(APPEND SMDATA_ARCH_LOADING_SRC
+              "arch/LoadingWindow/LoadingWindow_SDL.cpp")
+  list(
+    APPEND SMDATA_ARCH_LOADING_HPP "arch/LoadingWindow/LoadingWindow_SDL.h")
+elseif(WIN32)
   list(APPEND SMDATA_ARCH_LOADING_SRC
               "arch/LoadingWindow/LoadingWindow_Win32.cpp")
   list(

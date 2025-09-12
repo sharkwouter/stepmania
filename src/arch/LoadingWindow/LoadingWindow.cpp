@@ -8,7 +8,7 @@ LoadingWindow *LoadingWindow::Create()
 {
 	if( !PREFSMAN->m_bShowLoadingWindow )
 		return new LoadingWindow_Null;
-#if defined(UNIX)
+#if defined(UNIX) && !defined(HAVE_SDL)
 	return new LoadingWindow_Null;
 #endif
 	// Don't load nullptr by default.
@@ -30,6 +30,9 @@ LoadingWindow *LoadingWindow::Create()
 #endif
 #ifdef USE_LOADING_WINDOW_WIN32
 		if( !DriversToTry[i].CompareNoCase("Win32") )	ret = new LoadingWindow_Win32;
+#endif
+#ifdef USE_LOADING_WINDOW_SDL
+		ret = new LoadingWindow_SDL;
 #endif
 		if( !DriversToTry[i].CompareNoCase("Null") )	ret = new LoadingWindow_Null;
 
