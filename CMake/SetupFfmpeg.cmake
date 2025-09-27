@@ -5,7 +5,7 @@ if(CMAKE_GENERATOR MATCHES "Ninja")
     )
 endif()
 
-set(SM_FFMPEG_VERSION "2.1.3")
+set(SM_FFMPEG_VERSION "8.0.0")
 set(SM_FFMPEG_SRC_LIST
     "${SM_EXTERN_DIR}"
     "/ffmpeg-linux-"
@@ -88,7 +88,7 @@ else()
                       "n${SM_FFMPEG_VERSION}"
                       "--depth"
                       "1"
-                      "https://github.com/stepmania/ffmpeg.git"
+                      "https://github.com/FFmpeg/FFmpeg.git"
                       "${SM_FFMPEG_SRC_DIR}"
                       CONFIGURE_COMMAND
                       "${FFMPEG_CONFIGURE}"
