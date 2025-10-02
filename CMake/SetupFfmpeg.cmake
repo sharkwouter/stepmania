@@ -30,6 +30,8 @@ list(APPEND FFMPEG_CONFIGURE
             # "--disable-postproc"
             "--disable-avfilter"
             "--disable-shared"
+            "--disable-lzma"
+            "--disable-libdrm"
             "--enable-static")
 
 if(CMAKE_POSITION_INDEPENDENT_CODE)

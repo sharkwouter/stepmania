@@ -12,6 +12,7 @@ namespace avcodec
 	{
 		#include <libavformat/avformat.h>
 		#include <libswscale/swscale.h>
+		#include <libavcodec/avcodec.h>
 		#include <libavutil/pixdesc.h>
 
 		#if LIBAVCODEC_VERSION_MAJOR >= 58
@@ -32,7 +33,7 @@ namespace avcodec
 };
 
 #define STEPMANIA_FFMPEG_BUFFER_SIZE 4096
-static const int sws_flags = SWS_BICUBIC; // XXX: Reasonable default?
+static const int sws_flags = avcodec::SWS_BICUBIC; // XXX: Reasonable default?
 
 class MovieTexture_FFMpeg: public MovieTexture_Generic
 {
