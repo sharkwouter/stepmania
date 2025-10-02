@@ -5,7 +5,7 @@ if(CMAKE_GENERATOR MATCHES "Ninja")
     )
 endif()
 
-set(SM_FFMPEG_VERSION "8.0.0")
+set(SM_FFMPEG_VERSION "8.0")
 set(SM_FFMPEG_SRC_LIST
     "${SM_EXTERN_DIR}"
     "/ffmpeg-linux-"
@@ -27,7 +27,7 @@ list(APPEND FFMPEG_CONFIGURE
             "--disable-doc"
             "--disable-avdevice"
             "--disable-swresample"
-            "--disable-postproc"
+            # "--disable-postproc"
             "--disable-avfilter"
             "--disable-shared"
             "--enable-static")
