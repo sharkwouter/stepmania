@@ -501,7 +501,7 @@ RString MovieDecoder_FFMpeg::OpenCodec()
 
 	ASSERT( m_pStream != nullptr );
 	if( m_pStreamCodec->codec )
-		free( m_pStreamCodec );
+		avcodec_free_context( &m_pStreamCodec );
 
 	const avcodec::AVCodec *pCodec = avcodec::avcodec_find_decoder( m_pStreamCodec->codec_id );
 	if( pCodec == nullptr )
@@ -525,7 +525,7 @@ void MovieDecoder_FFMpeg::Close()
 {
 	if( m_pStream && m_pStreamCodec->codec )
 	{
-		free( m_pStreamCodec );
+		avcodec_free_context( &m_pStreamCodec );
 		m_pStream = nullptr;
 	}
 
