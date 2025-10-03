@@ -78,20 +78,20 @@ private:
 	int ReadPacket();
 	int DecodePacket( float fTargetTime );
 
-	avcodec::AVStream *m_pStream;
-	avcodec::AVFrame *m_Frame;
+	avcodec::AVStream *m_pStream = nullptr;
+	avcodec::AVFrame *m_Frame = nullptr;
 	avcodec::PixelFormat m_AVTexfmt; /* PixelFormat of output surface */
-	avcodec::SwsContext *m_swsctx;
-	avcodec::AVCodecContext *m_pStreamCodec;
+	avcodec::SwsContext *m_swsctx = nullptr;
+	avcodec::AVCodecContext *m_pStreamCodec = nullptr;
 
-	avcodec::AVFormatContext *m_fctx;
+	avcodec::AVFormatContext *m_fctx = nullptr;
 	float m_fTimestamp;
 	float m_fTimestampOffset;
 	float m_fLastFrameDelay;
 	int m_iFrameNumber;
 
-	unsigned char *m_buffer;
-	avcodec::AVIOContext *m_avioContext;
+	unsigned char *m_buffer = nullptr;
+	avcodec::AVIOContext *m_avioContext = nullptr;
 
 	avcodec::AVPacket m_Packet;
 	int m_iCurrentPacketOffset;
