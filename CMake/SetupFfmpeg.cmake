@@ -27,7 +27,6 @@ list(APPEND FFMPEG_CONFIGURE
             "--disable-doc"
             "--disable-avdevice"
             "--disable-swresample"
-            # "--disable-postproc"
             "--disable-avfilter"
             "--disable-shared"
             "--disable-lzma"
