@@ -38,9 +38,6 @@ if(CMAKE_POSITION_INDEPENDENT_CODE)
 endif()
 
 if(MACOSX)
-  find_program(FFMPEG_YASM_EXECUTABLE yasm
-               PATHS /usr/bin /usr/local/bin /opt/local/bin)
-  list(APPEND FFMPEG_CONFIGURE "--yasmexe=${FFMPEG_YASM_EXECUTABLE}")
   list(APPEND FFMPEG_PATCH_COMMAND "rm")
   list(APPEND FFMPEG_PATCH_COMMAND "-f")
   list(APPEND FFMPEG_PATCH_COMMAND "${SM_FFMPEG_SRC_DIR}/VERSION")
