@@ -5,7 +5,7 @@ if(CMAKE_GENERATOR MATCHES "Ninja")
     )
 endif()
 
-set(SM_FFMPEG_VERSION "2.1.3")
+set(SM_FFMPEG_VERSION "8.0")
 set(SM_FFMPEG_SRC_LIST
     "${SM_EXTERN_DIR}"
     "/ffmpeg-linux-"
@@ -27,22 +27,17 @@ list(APPEND FFMPEG_CONFIGURE
             "--disable-doc"
             "--disable-avdevice"
             "--disable-swresample"
-            "--disable-postproc"
             "--disable-avfilter"
             "--disable-shared"
+            "--disable-lzma"
+            "--disable-libdrm"
+            "--disable-vaapi"
+            "--disable-videotoolbox"
+            "--disable-securetransport"
             "--enable-static")
 
 if(CMAKE_POSITION_INDEPENDENT_CODE)
   list(APPEND FFMPEG_CONFIGURE "--enable-pic")
-endif()
-
-if(MACOSX)
-  find_program(FFMPEG_YASM_EXECUTABLE yasm
-               PATHS /usr/bin /usr/local/bin /opt/local/bin)
-  list(APPEND FFMPEG_CONFIGURE "--yasmexe=${FFMPEG_YASM_EXECUTABLE}")
-  list(APPEND FFMPEG_PATCH_COMMAND "rm")
-  list(APPEND FFMPEG_PATCH_COMMAND "-f")
-  list(APPEND FFMPEG_PATCH_COMMAND "${SM_FFMPEG_SRC_DIR}/VERSION")
 endif()
 
 if(WITH_GPL_LIBS)
@@ -88,7 +83,7 @@ else()
                       "n${SM_FFMPEG_VERSION}"
                       "--depth"
                       "1"
-                      "https://github.com/stepmania/ffmpeg.git"
+                      "https://github.com/FFmpeg/FFmpeg.git"
                       "${SM_FFMPEG_SRC_DIR}"
                       CONFIGURE_COMMAND
                       "${FFMPEG_CONFIGURE}"

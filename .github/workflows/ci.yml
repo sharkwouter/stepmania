@@ -24,6 +24,7 @@ jobs:
           libx11-dev
           libxrandr-dev
           libxtst-dev
+          nasm
       - name: Configure
         run: cmake -B build
       - name: Build
@@ -78,8 +79,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install dependencies
-        run: brew install
-          nasm
+        run: |
+          brew install yasm
       - name: Configure
         run: cmake -B build
       - name: Build
