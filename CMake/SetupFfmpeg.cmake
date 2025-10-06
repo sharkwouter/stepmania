@@ -31,6 +31,8 @@ list(APPEND FFMPEG_CONFIGURE
             "--disable-shared"
             "--disable-lzma"
             "--disable-libdrm"
+            "--disable-vaapi"
+            "--disable-videotoolbox"
             "--enable-static")
 
 if(CMAKE_POSITION_INDEPENDENT_CODE)
