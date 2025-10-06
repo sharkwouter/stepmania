@@ -24,7 +24,7 @@ jobs:
           libx11-dev
           libxrandr-dev
           libxtst-dev
-          yasm
+          nasm
       - name: Configure
         run: cmake -B build
       - name: Build
