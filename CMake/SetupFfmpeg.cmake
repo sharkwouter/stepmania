@@ -33,6 +33,7 @@ list(APPEND FFMPEG_CONFIGURE
             "--disable-libdrm"
             "--disable-vaapi"
             "--disable-videotoolbox"
+            "--disable-securetransport"
             "--enable-static")
 
 if(CMAKE_POSITION_INDEPENDENT_CODE)
