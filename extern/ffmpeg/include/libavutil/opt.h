@@ -29,6 +29,7 @@
 
 #include "rational.h"
 #include "avutil.h"
+#include "channel_layout.h"
 #include "dict.h"
 #include "log.h"
 #include "pixfmt.h"
@@ -41,6 +42,26 @@
  * AVOptions provide a generic system to declare options on arbitrary structs
  * ("objects"). An option can have a help text, a type and a range of possible
  * values. Options may then be enumerated, read and written to.
+ *
+ * There are two modes of access to members of AVOption and its child structs.
+ * One is called 'native access', and refers to access from the code that
+ * declares the AVOption in question.  The other is 'foreign access', and refers
+ * to access from other code.
+ *
+ * Certain struct members in this header are documented as 'native access only'
+ * or similar - it means that only the code that declared the AVOption in
+ * question is allowed to access the field. This allows us to extend the
+ * semantics of those fields without breaking API compatibility.
+ *
+ * @section avoptions_scope Scope of AVOptions
+ *
+ * AVOptions is designed to support any set of multimedia configuration options
+ * that can be defined at compile-time.  Although it is mainly used to expose
+ * FFmpeg options, you are welcome to adapt it to your own use case.
+ *
+ * No single approach can ever fully solve the problem of configuration,
+ * but please submit a patch if you believe you have found a problem
+ * that is best solved by extending AVOptions.
  *
  * @section avoptions_implement Implementing AVOptions
  * This section describes how to add AVOptions capabilities to a struct.
@@ -57,7 +78,7 @@
  * The following example illustrates an AVOptions-enabled struct:
  * @code
  * typedef struct test_struct {
- *     AVClass *class;
+ *     const AVClass *class;
  *     int      int_opt;
  *     char    *str_opt;
  *     uint8_t *bin_opt;
@@ -95,7 +116,7 @@
  * @code
  * test_struct *alloc_test_struct(void)
  * {
- *     test_struct *ret = av_malloc(sizeof(*ret));
+ *     test_struct *ret = av_mallocz(sizeof(*ret));
  *     ret->class = &test_class;
  *     av_opt_set_defaults(ret);
  *     return ret;
@@ -113,7 +134,7 @@
  *      libavcodec exports generic options, while its priv_data field exports
  *      codec-specific options). In such a case, it is possible to set up the
  *      parent struct to export a child's options. To do that, simply
- *      implement AVClass.child_next() and AVClass.child_class_next() in the
+ *      implement AVClass.child_next() and AVClass.child_class_iterate() in the
  *      parent struct's AVClass.
  *      Assuming that the test_struct from above now also contains a
  *      child_struct field:
@@ -142,23 +163,25 @@
  *              return t->child_struct;
  *          return NULL
  *      }
- *      const AVClass child_class_next(const AVClass *prev)
+ *      const AVClass child_class_iterate(void **iter)
  *      {
- *          return prev ? NULL : &child_class;
+ *          const AVClass *c = *iter ? NULL : &child_class;
+ *          *iter = (void*)(uintptr_t)c;
+ *          return c;
  *      }
  *      @endcode
- *      Putting child_next() and child_class_next() as defined above into
+ *      Putting child_next() and child_class_iterate() as defined above into
  *      test_class will now make child_struct's options accessible through
  *      test_struct (again, proper setup as described above needs to be done on
  *      child_struct right after it is created).
  *
  *      From the above example it might not be clear why both child_next()
- *      and child_class_next() are needed. The distinction is that child_next()
- *      iterates over actually existing objects, while child_class_next()
+ *      and child_class_iterate() are needed. The distinction is that child_next()
+ *      iterates over actually existing objects, while child_class_iterate()
  *      iterates over all possible child classes. E.g. if an AVCodecContext
  *      was initialized to use a codec which has private options, then its
  *      child_next() will return AVCodecContext.priv_data and finish
- *      iterating. OTOH child_class_next() on AVCodecContext.av_class will
+ *      iterating. OTOH child_class_iterate() on AVCodecContext.av_class will
  *      iterate over all available codecs with private options.
  *
  * @subsection avoptions_implement_named_constants Named constants
@@ -193,7 +216,7 @@
  * For enumerating there are basically two cases. The first is when you want to
  * get all options that may potentially exist on the struct and its children
  * (e.g.  when constructing documentation). In that case you should call
- * av_opt_child_class_next() recursively on the parent struct's AVClass.  The
+ * av_opt_child_class_iterate() recursively on the parent struct's AVClass.  The
  * second case is when you have an already initialized struct with all its
  * children and you want to get all options that can be actually written or read
  * from it. In that case you should call av_opt_child_next() recursively (and
@@ -212,40 +235,193 @@
  * In some cases it may be more convenient to put all options into an
  * AVDictionary and call av_opt_set_dict() on it. A specific case of this
  * are the format/codec open functions in lavf/lavc which take a dictionary
- * filled with option as a parameter. This allows to set some options
+ * filled with option as a parameter. This makes it possible to set some options
  * that cannot be set otherwise, since e.g. the input file format is not known
  * before the file is actually opened.
  */
 
+/**
+ * An option type determines:
+ * - for native access, the underlying C type of the field that an AVOption
+ *   refers to;
+ * - for foreign access, the semantics of accessing the option through this API,
+ *   e.g. which av_opt_get_*() and av_opt_set_*() functions can be called, or
+ *   what format will av_opt_get()/av_opt_set() expect/produce.
+ */
 enum AVOptionType{
-    AV_OPT_TYPE_FLAGS,
+    /**
+     * Underlying C type is unsigned int.
+     */
+    AV_OPT_TYPE_FLAGS = 1,
+    /**
+     * Underlying C type is int.
+     */
     AV_OPT_TYPE_INT,
+    /**
+     * Underlying C type is int64_t.
+     */
     AV_OPT_TYPE_INT64,
+    /**
+     * Underlying C type is double.
+     */
     AV_OPT_TYPE_DOUBLE,
+    /**
+     * Underlying C type is float.
+     */
     AV_OPT_TYPE_FLOAT,
+    /**
+     * Underlying C type is a uint8_t* that is either NULL or points to a C
+     * string allocated with the av_malloc() family of functions.
+     */
     AV_OPT_TYPE_STRING,
+    /**
+     * Underlying C type is AVRational.
+     */
     AV_OPT_TYPE_RATIONAL,
-    AV_OPT_TYPE_BINARY,  ///< offset must point to a pointer immediately followed by an int for the length
-    AV_OPT_TYPE_CONST = 128,
-    AV_OPT_TYPE_IMAGE_SIZE = MKBETAG('S','I','Z','E'), ///< offset must point to two consecutive integers
-    AV_OPT_TYPE_PIXEL_FMT  = MKBETAG('P','F','M','T'),
-    AV_OPT_TYPE_SAMPLE_FMT = MKBETAG('S','F','M','T'),
-    AV_OPT_TYPE_VIDEO_RATE = MKBETAG('V','R','A','T'), ///< offset must point to AVRational
-    AV_OPT_TYPE_DURATION   = MKBETAG('D','U','R',' '),
-    AV_OPT_TYPE_COLOR      = MKBETAG('C','O','L','R'),
-    AV_OPT_TYPE_CHANNEL_LAYOUT = MKBETAG('C','H','L','A'),
-#if FF_API_OLD_AVOPTIONS
-    FF_OPT_TYPE_FLAGS = 0,
-    FF_OPT_TYPE_INT,
-    FF_OPT_TYPE_INT64,
-    FF_OPT_TYPE_DOUBLE,
-    FF_OPT_TYPE_FLOAT,
-    FF_OPT_TYPE_STRING,
-    FF_OPT_TYPE_RATIONAL,
-    FF_OPT_TYPE_BINARY,  ///< offset must point to a pointer immediately followed by an int for the length
-    FF_OPT_TYPE_CONST=128,
-#endif
+    /**
+     * Underlying C type is a uint8_t* that is either NULL or points to an array
+     * allocated with the av_malloc() family of functions. The pointer is
+     * immediately followed by an int containing the array length in bytes.
+     */
+    AV_OPT_TYPE_BINARY,
+    /**
+     * Underlying C type is AVDictionary*.
+     */
+    AV_OPT_TYPE_DICT,
+    /**
+     * Underlying C type is uint64_t.
+     */
+    AV_OPT_TYPE_UINT64,
+    /**
+     * Special option type for declaring named constants. Does not correspond to
+     * an actual field in the object, offset must be 0.
+     */
+    AV_OPT_TYPE_CONST,
+    /**
+     * Underlying C type is two consecutive integers.
+     */
+    AV_OPT_TYPE_IMAGE_SIZE,
+    /**
+     * Underlying C type is enum AVPixelFormat.
+     */
+    AV_OPT_TYPE_PIXEL_FMT,
+    /**
+     * Underlying C type is enum AVSampleFormat.
+     */
+    AV_OPT_TYPE_SAMPLE_FMT,
+    /**
+     * Underlying C type is AVRational.
+     */
+    AV_OPT_TYPE_VIDEO_RATE,
+    /**
+     * Underlying C type is int64_t.
+     */
+    AV_OPT_TYPE_DURATION,
+    /**
+     * Underlying C type is uint8_t[4].
+     */
+    AV_OPT_TYPE_COLOR,
+    /**
+     * Underlying C type is int.
+     */
+    AV_OPT_TYPE_BOOL,
+    /**
+     * Underlying C type is AVChannelLayout.
+     */
+    AV_OPT_TYPE_CHLAYOUT,
+    /**
+     * Underlying C type is unsigned int.
+     */
+    AV_OPT_TYPE_UINT,
+
+    /**
+     * May be combined with another regular option type to declare an array
+     * option.
+     *
+     * For array options, @ref AVOption.offset should refer to a pointer
+     * corresponding to the option type. The pointer should be immediately
+     * followed by an unsigned int that will store the number of elements in the
+     * array.
+     */
+    AV_OPT_TYPE_FLAG_ARRAY = (1 << 16),
 };
+
+/**
+ * A generic parameter which can be set by the user for muxing or encoding.
+ */
+#define AV_OPT_FLAG_ENCODING_PARAM  (1 << 0)
+/**
+ * A generic parameter which can be set by the user for demuxing or decoding.
+ */
+#define AV_OPT_FLAG_DECODING_PARAM  (1 << 1)
+#define AV_OPT_FLAG_AUDIO_PARAM     (1 << 3)
+#define AV_OPT_FLAG_VIDEO_PARAM     (1 << 4)
+#define AV_OPT_FLAG_SUBTITLE_PARAM  (1 << 5)
+/**
+ * The option is intended for exporting values to the caller.
+ */
+#define AV_OPT_FLAG_EXPORT          (1 << 6)
+/**
+ * The option may not be set through the AVOptions API, only read.
+ * This flag only makes sense when AV_OPT_FLAG_EXPORT is also set.
+ */
+#define AV_OPT_FLAG_READONLY        (1 << 7)
+/**
+ * A generic parameter which can be set by the user for bit stream filtering.
+ */
+#define AV_OPT_FLAG_BSF_PARAM       (1 << 8)
+
+/**
+ * A generic parameter which can be set by the user at runtime.
+ */
+#define AV_OPT_FLAG_RUNTIME_PARAM   (1 << 15)
+/**
+ * A generic parameter which can be set by the user for filtering.
+ */
+#define AV_OPT_FLAG_FILTERING_PARAM (1 << 16)
+/**
+ * Set if option is deprecated, users should refer to AVOption.help text for
+ * more information.
+ */
+#define AV_OPT_FLAG_DEPRECATED      (1 << 17)
+/**
+ * Set if option constants can also reside in child objects.
+ */
+#define AV_OPT_FLAG_CHILD_CONSTS    (1 << 18)
+
+/**
+ * May be set as default_val for AV_OPT_TYPE_FLAG_ARRAY options.
+ */
+typedef struct AVOptionArrayDef {
+    /**
+     * Native access only.
+     *
+     * Default value of the option, as would be serialized by av_opt_get() (i.e.
+     * using the value of sep as the separator).
+     */
+    const char         *def;
+
+    /**
+     * Minimum number of elements in the array. When this field is non-zero, def
+     * must be non-NULL and contain at least this number of elements.
+     */
+    unsigned            size_min;
+    /**
+     * Maximum number of elements in the array, 0 when unlimited.
+     */
+    unsigned            size_max;
+
+    /**
+     * Separator between array elements in string representations of this
+     * option, used by av_opt_set() and av_opt_get(). It must be a printable
+     * ASCII character, excluding alphanumeric and the backslash. A comma is
+     * used when sep=0.
+     *
+     * The separator and the backslash must be backslash-escaped in order to
+     * appear in string representations of the option value.
+     */
+    char                sep;
+} AVOptionArrayDef;
 
 /**
  * AVOption
@@ -260,6 +436,8 @@ typedef struct AVOption {
     const char *help;
 
     /**
+     * Native access only.
+     *
      * The offset relative to the context structure where the option
      * value is stored. It should be 0 for named constants.
      */
@@ -267,6 +445,7 @@ typedef struct AVOption {
     enum AVOptionType type;
 
     /**
+     * Native access only, except when documented otherwise.
      * the default value for scalar options
      */
     union {
@@ -275,19 +454,22 @@ typedef struct AVOption {
         const char *str;
         /* TODO those are unused now */
         AVRational q;
+
+        /**
+         * Used for AV_OPT_TYPE_FLAG_ARRAY options. May be NULL.
+         *
+         * Foreign access to some members allowed, as noted in AVOptionArrayDef
+         * documentation.
+         */
+        const AVOptionArrayDef *arr;
     } default_val;
     double min;                 ///< minimum valid value for the option
     double max;                 ///< maximum valid value for the option
 
+    /**
+     * A combination of AV_OPT_FLAG_*.
+     */
     int flags;
-#define AV_OPT_FLAG_ENCODING_PARAM  1   ///< a generic parameter which can be set by the user for muxing or encoding
-#define AV_OPT_FLAG_DECODING_PARAM  2   ///< a generic parameter which can be set by the user for demuxing or decoding
-#define AV_OPT_FLAG_METADATA        4   ///< some data extracted or inserted into the file like title, comment, ...
-#define AV_OPT_FLAG_AUDIO_PARAM     8
-#define AV_OPT_FLAG_VIDEO_PARAM     16
-#define AV_OPT_FLAG_SUBTITLE_PARAM  32
-#define AV_OPT_FLAG_FILTERING_PARAM (1<<16) ///< a generic parameter which can be set by the user for filtering
-//FIXME think about enc-audio, ... style flags
 
     /**
      * The logical unit to which the option belongs. Non-constant
@@ -302,79 +484,201 @@ typedef struct AVOption {
  */
 typedef struct AVOptionRange {
     const char *str;
-    double value_min, value_max;             ///< For string ranges this represents the min/max length, for dimensions this represents the min/max pixel count
-    double component_min, component_max;     ///< For string this represents the unicode range for chars, 0-127 limits to ASCII
-    int is_range;                            ///< if set to 1 the struct encodes a range, if set to 0 a single value
+    /**
+     * Value range.
+     * For string ranges this represents the min/max length.
+     * For dimensions this represents the min/max pixel count or width/height in multi-component case.
+     */
+    double value_min, value_max;
+    /**
+     * Value's component range.
+     * For string this represents the unicode range for chars, 0-127 limits to ASCII.
+     */
+    double component_min, component_max;
+    /**
+     * Range flag.
+     * If set to 1 the struct encodes a range, if set to 0 a single value.
+     */
+    int is_range;
 } AVOptionRange;
 
 /**
- * List of AVOptionRange structs
+ * List of AVOptionRange structs.
  */
 typedef struct AVOptionRanges {
+    /**
+     * Array of option ranges.
+     *
+     * Most of option types use just one component.
+     * Following describes multi-component option types:
+     *
+     * AV_OPT_TYPE_IMAGE_SIZE:
+     * component index 0: range of pixel count (width * height).
+     * component index 1: range of width.
+     * component index 2: range of height.
+     *
+     * @note To obtain multi-component version of this structure, user must
+     *       provide AV_OPT_MULTI_COMPONENT_RANGE to av_opt_query_ranges or
+     *       av_opt_query_ranges_default function.
+     *
+     * Multi-component range can be read as in following example:
+     *
+     * @code
+     * int range_index, component_index;
+     * AVOptionRanges *ranges;
+     * AVOptionRange *range[3]; //may require more than 3 in the future.
+     * av_opt_query_ranges(&ranges, obj, key, AV_OPT_MULTI_COMPONENT_RANGE);
+     * for (range_index = 0; range_index < ranges->nb_ranges; range_index++) {
+     *     for (component_index = 0; component_index < ranges->nb_components; component_index++)
+     *         range[component_index] = ranges->range[ranges->nb_ranges * component_index + range_index];
+     *     //do something with range here.
+     * }
+     * av_opt_freep_ranges(&ranges);
+     * @endcode
+     */
     AVOptionRange **range;
+    /**
+     * Number of ranges per component.
+     */
     int nb_ranges;
+    /**
+     * Number of components.
+     */
+    int nb_components;
 } AVOptionRanges;
 
-
-#if FF_API_FIND_OPT
 /**
- * Look for an option in obj. Look only for the options which
- * have the flags set as specified in mask and flags (that is,
- * for which it is the case that (opt->flags & mask) == flags).
- *
- * @param[in] obj a pointer to a struct whose first element is a
- * pointer to an AVClass
- * @param[in] name the name of the option to look for
- * @param[in] unit the unit of the option to look for, or any if NULL
- * @return a pointer to the option found, or NULL if no option
- * has been found
- *
- * @deprecated use av_opt_find.
+ * @defgroup opt_mng AVOption (un)initialization and inspection.
+ * @{
  */
-attribute_deprecated
-const AVOption *av_find_opt(void *obj, const char *name, const char *unit, int mask, int flags);
-#endif
 
-#if FF_API_OLD_AVOPTIONS
 /**
- * Set the field of obj with the given name to value.
+ * Set the values of all AVOption fields to their default values.
  *
- * @param[in] obj A struct whose first element is a pointer to an
- * AVClass.
- * @param[in] name the name of the field to set
- * @param[in] val The value to set. If the field is not of a string
- * type, then the given string is parsed.
- * SI postfixes and some named scalars are supported.
- * If the field is of a numeric type, it has to be a numeric or named
- * scalar. Behavior with more than one scalar and +- infix operators
- * is undefined.
- * If the field is of a flags type, it has to be a sequence of numeric
- * scalars or named flags separated by '+' or '-'. Prefixing a flag
- * with '+' causes it to be set without affecting the other flags;
- * similarly, '-' unsets a flag.
- * @param[out] o_out if non-NULL put here a pointer to the AVOption
- * found
- * @param alloc this parameter is currently ignored
- * @return 0 if the value has been set, or an AVERROR code in case of
- * error:
- * AVERROR_OPTION_NOT_FOUND if no matching option exists
- * AVERROR(ERANGE) if the value is out of range
- * AVERROR(EINVAL) if the value is not valid
- * @deprecated use av_opt_set()
+ * @param s an AVOption-enabled struct (its first member must be a pointer to AVClass)
  */
-attribute_deprecated
-int av_set_string3(void *obj, const char *name, const char *val, int alloc, const AVOption **o_out);
+void av_opt_set_defaults(void *s);
 
-attribute_deprecated const AVOption *av_set_double(void *obj, const char *name, double n);
-attribute_deprecated const AVOption *av_set_q(void *obj, const char *name, AVRational n);
-attribute_deprecated const AVOption *av_set_int(void *obj, const char *name, int64_t n);
+/**
+ * Set the values of all AVOption fields to their default values. Only these
+ * AVOption fields for which (opt->flags & mask) == flags will have their
+ * default applied to s.
+ *
+ * @param s an AVOption-enabled struct (its first member must be a pointer to AVClass)
+ * @param mask combination of AV_OPT_FLAG_*
+ * @param flags combination of AV_OPT_FLAG_*
+ */
+void av_opt_set_defaults2(void *s, int mask, int flags);
 
-double av_get_double(void *obj, const char *name, const AVOption **o_out);
-AVRational av_get_q(void *obj, const char *name, const AVOption **o_out);
-int64_t av_get_int(void *obj, const char *name, const AVOption **o_out);
-attribute_deprecated const char *av_get_string(void *obj, const char *name, const AVOption **o_out, char *buf, int buf_len);
-attribute_deprecated const AVOption *av_next_option(void *obj, const AVOption *last);
-#endif
+/**
+ * Free all allocated objects in obj.
+ */
+void av_opt_free(void *obj);
+
+/**
+ * Iterate over all AVOptions belonging to obj.
+ *
+ * @param obj an AVOptions-enabled struct or a double pointer to an
+ *            AVClass describing it.
+ * @param prev result of the previous call to av_opt_next() on this object
+ *             or NULL
+ * @return next AVOption or NULL
+ */
+const AVOption *av_opt_next(const void *obj, const AVOption *prev);
+
+/**
+ * Iterate over AVOptions-enabled children of obj.
+ *
+ * @param prev result of a previous call to this function or NULL
+ * @return next AVOptions-enabled child or NULL
+ */
+void *av_opt_child_next(void *obj, void *prev);
+
+/**
+ * Iterate over potential AVOptions-enabled children of parent.
+ *
+ * @param iter a pointer where iteration state is stored.
+ * @return AVClass corresponding to next potential child or NULL
+ */
+const AVClass *av_opt_child_class_iterate(const AVClass *parent, void **iter);
+
+#define AV_OPT_SEARCH_CHILDREN   (1 << 0) /**< Search in possible children of the
+                                               given object first. */
+/**
+ *  The obj passed to av_opt_find() is fake -- only a double pointer to AVClass
+ *  instead of a required pointer to a struct containing AVClass. This is
+ *  useful for searching for options without needing to allocate the corresponding
+ *  object.
+ */
+#define AV_OPT_SEARCH_FAKE_OBJ   (1 << 1)
+
+/**
+ *  In av_opt_get, return NULL if the option has a pointer type and is set to NULL,
+ *  rather than returning an empty string.
+ */
+#define AV_OPT_ALLOW_NULL (1 << 2)
+
+/**
+ * May be used with av_opt_set_array() to signal that new elements should
+ * replace the existing ones in the indicated range.
+ */
+#define AV_OPT_ARRAY_REPLACE (1 << 3)
+
+/**
+ *  Allows av_opt_query_ranges and av_opt_query_ranges_default to return more than
+ *  one component for certain option types.
+ *  @see AVOptionRanges for details.
+ */
+#define AV_OPT_MULTI_COMPONENT_RANGE (1 << 12)
+
+/**
+ * Look for an option in an object. Consider only options which
+ * have all the specified flags set.
+ *
+ * @param[in] obj A pointer to a struct whose first element is a
+ *                pointer to an AVClass.
+ *                Alternatively a double pointer to an AVClass, if
+ *                AV_OPT_SEARCH_FAKE_OBJ search flag is set.
+ * @param[in] name The name of the option to look for.
+ * @param[in] unit When searching for named constants, name of the unit
+ *                 it belongs to.
+ * @param opt_flags Find only options with all the specified flags set (AV_OPT_FLAG).
+ * @param search_flags A combination of AV_OPT_SEARCH_*.
+ *
+ * @return A pointer to the option found, or NULL if no option
+ *         was found.
+ *
+ * @note Options found with AV_OPT_SEARCH_CHILDREN flag may not be settable
+ * directly with av_opt_set(). Use special calls which take an options
+ * AVDictionary (e.g. avformat_open_input()) to set options found with this
+ * flag.
+ */
+const AVOption *av_opt_find(void *obj, const char *name, const char *unit,
+                            int opt_flags, int search_flags);
+
+/**
+ * Look for an option in an object. Consider only options which
+ * have all the specified flags set.
+ *
+ * @param[in] obj A pointer to a struct whose first element is a
+ *                pointer to an AVClass.
+ *                Alternatively a double pointer to an AVClass, if
+ *                AV_OPT_SEARCH_FAKE_OBJ search flag is set.
+ * @param[in] name The name of the option to look for.
+ * @param[in] unit When searching for named constants, name of the unit
+ *                 it belongs to.
+ * @param opt_flags Find only options with all the specified flags set (AV_OPT_FLAG).
+ * @param search_flags A combination of AV_OPT_SEARCH_*.
+ * @param[out] target_obj if non-NULL, an object to which the option belongs will be
+ * written here. It may be different from obj if AV_OPT_SEARCH_CHILDREN is present
+ * in search_flags. This parameter is ignored if search_flags contain
+ * AV_OPT_SEARCH_FAKE_OBJ.
+ *
+ * @return A pointer to the option found, or NULL if no option
+ *         was found.
+ */
+const AVOption *av_opt_find2(void *obj, const char *name, const char *unit,
+                             int opt_flags, int search_flags, void **target_obj);
 
 /**
  * Show the obj options.
@@ -386,99 +690,6 @@ attribute_deprecated const AVOption *av_next_option(void *obj, const AVOption *l
  * @param av_log_obj log context to use for showing the options
  */
 int av_opt_show2(void *obj, void *av_log_obj, int req_flags, int rej_flags);
-
-/**
- * Set the values of all AVOption fields to their default values.
- *
- * @param s an AVOption-enabled struct (its first member must be a pointer to AVClass)
- */
-void av_opt_set_defaults(void *s);
-
-#if FF_API_OLD_AVOPTIONS
-attribute_deprecated
-void av_opt_set_defaults2(void *s, int mask, int flags);
-#endif
-
-/**
- * Parse the key/value pairs list in opts. For each key/value pair
- * found, stores the value in the field in ctx that is named like the
- * key. ctx must be an AVClass context, storing is done using
- * AVOptions.
- *
- * @param opts options string to parse, may be NULL
- * @param key_val_sep a 0-terminated list of characters used to
- * separate key from value
- * @param pairs_sep a 0-terminated list of characters used to separate
- * two pairs from each other
- * @return the number of successfully set key/value pairs, or a negative
- * value corresponding to an AVERROR code in case of error:
- * AVERROR(EINVAL) if opts cannot be parsed,
- * the error code issued by av_set_string3() if a key/value pair
- * cannot be set
- */
-int av_set_options_string(void *ctx, const char *opts,
-                          const char *key_val_sep, const char *pairs_sep);
-
-/**
- * Parse the key-value pairs list in opts. For each key=value pair found,
- * set the value of the corresponding option in ctx.
- *
- * @param ctx          the AVClass object to set options on
- * @param opts         the options string, key-value pairs separated by a
- *                     delimiter
- * @param shorthand    a NULL-terminated array of options names for shorthand
- *                     notation: if the first field in opts has no key part,
- *                     the key is taken from the first element of shorthand;
- *                     then again for the second, etc., until either opts is
- *                     finished, shorthand is finished or a named option is
- *                     found; after that, all options must be named
- * @param key_val_sep  a 0-terminated list of characters used to separate
- *                     key from value, for example '='
- * @param pairs_sep    a 0-terminated list of characters used to separate
- *                     two pairs from each other, for example ':' or ','
- * @return  the number of successfully set key=value pairs, or a negative
- *          value corresponding to an AVERROR code in case of error:
- *          AVERROR(EINVAL) if opts cannot be parsed,
- *          the error code issued by av_set_string3() if a key/value pair
- *          cannot be set
- *
- * Options names must use only the following characters: a-z A-Z 0-9 - . / _
- * Separators must use characters distinct from option names and from each
- * other.
- */
-int av_opt_set_from_string(void *ctx, const char *opts,
-                           const char *const *shorthand,
-                           const char *key_val_sep, const char *pairs_sep);
-/**
- * Free all string and binary options in obj.
- */
-void av_opt_free(void *obj);
-
-/**
- * Check whether a particular flag is set in a flags field.
- *
- * @param field_name the name of the flag field option
- * @param flag_name the name of the flag to check
- * @return non-zero if the flag is set, zero if the flag isn't set,
- *         isn't of the right type, or the flags field doesn't exist.
- */
-int av_opt_flag_is_set(void *obj, const char *field_name, const char *flag_name);
-
-/**
- * Set all the options from a given dictionary on an object.
- *
- * @param obj a struct whose first element is a pointer to AVClass
- * @param options options to process. This dictionary will be freed and replaced
- *                by a new one containing all options not found in obj.
- *                Of course this new dictionary needs to be freed by caller
- *                with av_dict_free().
- *
- * @return 0 on success, a negative AVERROR if some option was found in obj,
- *         but could not be set.
- *
- * @see av_dict_copy()
- */
-int av_opt_set_dict(void *obj, struct AVDictionary **options);
 
 /**
  * Extract a key-value pair from the beginning of a string.
@@ -514,114 +725,117 @@ enum {
 };
 
 /**
- * @defgroup opt_eval_funcs Evaluating option strings
- * @{
- * This group of functions can be used to evaluate option strings
- * and get numbers out of them. They do the same thing as av_opt_set(),
- * except the result is written into the caller-supplied pointer.
- *
- * @param obj a struct whose first element is a pointer to AVClass.
- * @param o an option for which the string is to be evaluated.
- * @param val string to be evaluated.
- * @param *_out value of the string will be written here.
- *
- * @return 0 on success, a negative number on failure.
- */
-int av_opt_eval_flags (void *obj, const AVOption *o, const char *val, int        *flags_out);
-int av_opt_eval_int   (void *obj, const AVOption *o, const char *val, int        *int_out);
-int av_opt_eval_int64 (void *obj, const AVOption *o, const char *val, int64_t    *int64_out);
-int av_opt_eval_float (void *obj, const AVOption *o, const char *val, float      *float_out);
-int av_opt_eval_double(void *obj, const AVOption *o, const char *val, double     *double_out);
-int av_opt_eval_q     (void *obj, const AVOption *o, const char *val, AVRational *q_out);
-/**
  * @}
  */
 
-#define AV_OPT_SEARCH_CHILDREN   0x0001 /**< Search in possible children of the
-                                             given object first. */
 /**
- *  The obj passed to av_opt_find() is fake -- only a double pointer to AVClass
- *  instead of a required pointer to a struct containing AVClass. This is
- *  useful for searching for options without needing to allocate the corresponding
- *  object.
+ * @defgroup opt_write Setting and modifying option values
+ * @{
  */
-#define AV_OPT_SEARCH_FAKE_OBJ   0x0002
 
 /**
- * Look for an option in an object. Consider only options which
- * have all the specified flags set.
+ * Parse the key/value pairs list in opts. For each key/value pair
+ * found, stores the value in the field in ctx that is named like the
+ * key. ctx must be an AVClass context, storing is done using
+ * AVOptions.
  *
- * @param[in] obj A pointer to a struct whose first element is a
- *                pointer to an AVClass.
- *                Alternatively a double pointer to an AVClass, if
- *                AV_OPT_SEARCH_FAKE_OBJ search flag is set.
- * @param[in] name The name of the option to look for.
- * @param[in] unit When searching for named constants, name of the unit
- *                 it belongs to.
- * @param opt_flags Find only options with all the specified flags set (AV_OPT_FLAG).
+ * @param opts options string to parse, may be NULL
+ * @param key_val_sep a 0-terminated list of characters used to
+ * separate key from value
+ * @param pairs_sep a 0-terminated list of characters used to separate
+ * two pairs from each other
+ * @return the number of successfully set key/value pairs, or a negative
+ * value corresponding to an AVERROR code in case of error:
+ * AVERROR(EINVAL) if opts cannot be parsed,
+ * the error code issued by av_opt_set() if a key/value pair
+ * cannot be set
+ */
+int av_set_options_string(void *ctx, const char *opts,
+                          const char *key_val_sep, const char *pairs_sep);
+
+/**
+ * Parse the key-value pairs list in opts. For each key=value pair found,
+ * set the value of the corresponding option in ctx.
+ *
+ * @param ctx          the AVClass object to set options on
+ * @param opts         the options string, key-value pairs separated by a
+ *                     delimiter
+ * @param shorthand    a NULL-terminated array of options names for shorthand
+ *                     notation: if the first field in opts has no key part,
+ *                     the key is taken from the first element of shorthand;
+ *                     then again for the second, etc., until either opts is
+ *                     finished, shorthand is finished or a named option is
+ *                     found; after that, all options must be named
+ * @param key_val_sep  a 0-terminated list of characters used to separate
+ *                     key from value, for example '='
+ * @param pairs_sep    a 0-terminated list of characters used to separate
+ *                     two pairs from each other, for example ':' or ','
+ * @return  the number of successfully set key=value pairs, or a negative
+ *          value corresponding to an AVERROR code in case of error:
+ *          AVERROR(EINVAL) if opts cannot be parsed,
+ *          the error code issued by av_set_string3() if a key/value pair
+ *          cannot be set
+ *
+ * Options names must use only the following characters: a-z A-Z 0-9 - . / _
+ * Separators must use characters distinct from option names and from each
+ * other.
+ */
+int av_opt_set_from_string(void *ctx, const char *opts,
+                           const char *const *shorthand,
+                           const char *key_val_sep, const char *pairs_sep);
+
+/**
+ * Set all the options from a given dictionary on an object.
+ *
+ * @param obj a struct whose first element is a pointer to AVClass
+ * @param options options to process. This dictionary will be freed and replaced
+ *                by a new one containing all options not found in obj.
+ *                Of course this new dictionary needs to be freed by caller
+ *                with av_dict_free().
+ *
+ * @return 0 on success, a negative AVERROR if some option was found in obj,
+ *         but could not be set.
+ *
+ * @see av_dict_copy()
+ */
+int av_opt_set_dict(void *obj, struct AVDictionary **options);
+
+
+/**
+ * Set all the options from a given dictionary on an object.
+ *
+ * @param obj a struct whose first element is a pointer to AVClass
+ * @param options options to process. This dictionary will be freed and replaced
+ *                by a new one containing all options not found in obj.
+ *                Of course this new dictionary needs to be freed by caller
+ *                with av_dict_free().
  * @param search_flags A combination of AV_OPT_SEARCH_*.
  *
- * @return A pointer to the option found, or NULL if no option
- *         was found.
+ * @return 0 on success, a negative AVERROR if some option was found in obj,
+ *         but could not be set.
  *
- * @note Options found with AV_OPT_SEARCH_CHILDREN flag may not be settable
- * directly with av_set_string3(). Use special calls which take an options
- * AVDictionary (e.g. avformat_open_input()) to set options found with this
- * flag.
+ * @see av_dict_copy()
  */
-const AVOption *av_opt_find(void *obj, const char *name, const char *unit,
-                            int opt_flags, int search_flags);
+int av_opt_set_dict2(void *obj, struct AVDictionary **options, int search_flags);
 
 /**
- * Look for an option in an object. Consider only options which
- * have all the specified flags set.
+ * Copy options from src object into dest object.
  *
- * @param[in] obj A pointer to a struct whose first element is a
- *                pointer to an AVClass.
- *                Alternatively a double pointer to an AVClass, if
- *                AV_OPT_SEARCH_FAKE_OBJ search flag is set.
- * @param[in] name The name of the option to look for.
- * @param[in] unit When searching for named constants, name of the unit
- *                 it belongs to.
- * @param opt_flags Find only options with all the specified flags set (AV_OPT_FLAG).
- * @param search_flags A combination of AV_OPT_SEARCH_*.
- * @param[out] target_obj if non-NULL, an object to which the option belongs will be
- * written here. It may be different from obj if AV_OPT_SEARCH_CHILDREN is present
- * in search_flags. This parameter is ignored if search_flags contain
- * AV_OPT_SEARCH_FAKE_OBJ.
+ * The underlying AVClass of both src and dest must coincide. The guarantee
+ * below does not apply if this is not fulfilled.
  *
- * @return A pointer to the option found, or NULL if no option
- *         was found.
+ * Options that require memory allocation (e.g. string or binary) are malloc'ed in dest object.
+ * Original memory allocated for such options is freed unless both src and dest options points to the same memory.
+ *
+ * Even on error it is guaranteed that allocated options from src and dest
+ * no longer alias each other afterwards; in particular calling av_opt_free()
+ * on both src and dest is safe afterwards if dest has been memdup'ed from src.
+ *
+ * @param dest Object to copy from
+ * @param src  Object to copy into
+ * @return 0 on success, negative on error
  */
-const AVOption *av_opt_find2(void *obj, const char *name, const char *unit,
-                             int opt_flags, int search_flags, void **target_obj);
-
-/**
- * Iterate over all AVOptions belonging to obj.
- *
- * @param obj an AVOptions-enabled struct or a double pointer to an
- *            AVClass describing it.
- * @param prev result of the previous call to av_opt_next() on this object
- *             or NULL
- * @return next AVOption or NULL
- */
-const AVOption *av_opt_next(void *obj, const AVOption *prev);
-
-/**
- * Iterate over AVOptions-enabled children of obj.
- *
- * @param prev result of a previous call to this function or NULL
- * @return next AVOptions-enabled child or NULL
- */
-void *av_opt_child_next(void *obj, void *prev);
-
-/**
- * Iterate over potential AVOptions-enabled children of parent.
- *
- * @param prev result of a previous call to this function or NULL
- * @return AVClass corresponding to next potential child or NULL
- */
-const AVClass *av_opt_child_class_next(const AVClass *parent, const AVClass *prev);
+int av_opt_copy(void *dest, const void *src);
 
 /**
  * @defgroup opt_set_funcs Option setting functions
@@ -640,6 +854,9 @@ const AVClass *av_opt_child_class_next(const AVClass *parent, const AVClass *pre
  * scalars or named flags separated by '+' or '-'. Prefixing a flag
  * with '+' causes it to be set without affecting the other flags;
  * similarly, '-' unsets a flag.
+ * If the field is of a dictionary type, it has to be a ':' separated list of
+ * key=value parameters. Values containing ':' special characters must be
+ * escaped.
  * @param search_flags flags passed to av_opt_find2. I.e. if AV_OPT_SEARCH_CHILDREN
  * is passed here, then the option may be set on a child of obj.
  *
@@ -649,17 +866,27 @@ const AVClass *av_opt_child_class_next(const AVClass *parent, const AVClass *pre
  * AVERROR(ERANGE) if the value is out of range
  * AVERROR(EINVAL) if the value is not valid
  */
-int av_opt_set       (void *obj, const char *name, const char *val, int search_flags);
-int av_opt_set_int   (void *obj, const char *name, int64_t     val, int search_flags);
-int av_opt_set_double(void *obj, const char *name, double      val, int search_flags);
-int av_opt_set_q     (void *obj, const char *name, AVRational  val, int search_flags);
-int av_opt_set_bin   (void *obj, const char *name, const uint8_t *val, int size, int search_flags);
+int av_opt_set         (void *obj, const char *name, const char *val, int search_flags);
+int av_opt_set_int     (void *obj, const char *name, int64_t     val, int search_flags);
+int av_opt_set_double  (void *obj, const char *name, double      val, int search_flags);
+int av_opt_set_q       (void *obj, const char *name, AVRational  val, int search_flags);
+int av_opt_set_bin     (void *obj, const char *name, const uint8_t *val, int size, int search_flags);
 int av_opt_set_image_size(void *obj, const char *name, int w, int h, int search_flags);
 int av_opt_set_pixel_fmt (void *obj, const char *name, enum AVPixelFormat fmt, int search_flags);
 int av_opt_set_sample_fmt(void *obj, const char *name, enum AVSampleFormat fmt, int search_flags);
 int av_opt_set_video_rate(void *obj, const char *name, AVRational val, int search_flags);
-int av_opt_set_channel_layout(void *obj, const char *name, int64_t ch_layout, int search_flags);
+/**
+ * @note Any old chlayout present is discarded and replaced with a copy of the new one. The
+ * caller still owns layout and is responsible for uninitializing it.
+ */
+int av_opt_set_chlayout(void *obj, const char *name, const AVChannelLayout *layout, int search_flags);
+/**
+ * @note Any old dictionary present is discarded and replaced with a copy of the new one. The
+ * caller still owns val is and responsible for freeing it.
+ */
+int av_opt_set_dict_val(void *obj, const char *name, const AVDictionary *val, int search_flags);
 
+#if FF_API_OPT_INT_LIST
 /**
  * Set a binary option to an integer list.
  *
@@ -675,8 +902,66 @@ int av_opt_set_channel_layout(void *obj, const char *name, int64_t ch_layout, in
      AVERROR(EINVAL) : \
      av_opt_set_bin(obj, name, (const uint8_t *)(val), \
                     av_int_list_length(val, term) * sizeof(*(val)), flags))
+#endif
+
+/**
+ * Add, replace, or remove elements for an array option. Which of these
+ * operations is performed depends on the values of val and search_flags.
+ *
+ * @param start_elem Index of the first array element to modify; must not be
+ *                   larger than array size as returned by
+ *                   av_opt_get_array_size().
+ * @param nb_elems number of array elements to modify; when val is NULL,
+ *                 start_elem+nb_elems must not be larger than array size as
+ *                 returned by av_opt_get_array_size()
+ *
+ * @param val_type Option type corresponding to the type of val, ignored when val is
+ *                 NULL.
+ *
+ *                 The effect of this function will will be as if av_opt_setX()
+ *                 was called for each element, where X is specified by type.
+ *                 E.g. AV_OPT_TYPE_STRING corresponds to av_opt_set().
+ *
+ *                 Typically this should be the same as the scalarized type of
+ *                 the AVOption being set, but certain conversions are also
+ *                 possible - the same as those done by the corresponding
+ *                 av_opt_set*() function. E.g. any option type can be set from
+ *                 a string, numeric types can be set from int64, double, or
+ *                 rational, etc.
+ *
+ * @param val Array with nb_elems elements or NULL.
+ *
+ *            When NULL, nb_elems array elements starting at start_elem are
+ *            removed from the array. Any array elements remaining at the end
+ *            are shifted by nb_elems towards the first element in order to keep
+ *            the array contiguous.
+ *
+ *            Otherwise (val is non-NULL), the type of val must match the
+ *            underlying C type as documented for val_type.
+ *
+ *            When AV_OPT_ARRAY_REPLACE is not set in search_flags, the array is
+ *            enlarged by nb_elems, and the contents of val are inserted at
+ *            start_elem. Previously existing array elements from start_elem
+ *            onwards (if present) are shifted by nb_elems away from the first
+ *            element in order to make space for the new elements.
+ *
+ *            When AV_OPT_ARRAY_REPLACE is set in search_flags, the contents
+ *            of val replace existing array elements from start_elem to
+ *            start_elem+nb_elems (if present). New array size is
+ *            max(start_elem + nb_elems, old array size).
+ */
+int av_opt_set_array(void *obj, const char *name, int search_flags,
+                     unsigned int start_elem, unsigned int nb_elems,
+                     enum AVOptionType val_type, const void *val);
+
 /**
  * @}
+ * @}
+ */
+
+/**
+ * @defgroup opt_read Reading option values
+ * @{
  */
 
 /**
@@ -693,19 +978,100 @@ int av_opt_set_channel_layout(void *obj, const char *name, int64_t ch_layout, in
  */
 /**
  * @note the returned string will be av_malloc()ed and must be av_free()ed by the caller
+ *
+ * @note if AV_OPT_ALLOW_NULL is set in search_flags in av_opt_get, and the
+ * option is of type AV_OPT_TYPE_STRING, AV_OPT_TYPE_BINARY or AV_OPT_TYPE_DICT
+ * and is set to NULL, *out_val will be set to NULL instead of an allocated
+ * empty string.
  */
-int av_opt_get       (void *obj, const char *name, int search_flags, uint8_t   **out_val);
-int av_opt_get_int   (void *obj, const char *name, int search_flags, int64_t    *out_val);
-int av_opt_get_double(void *obj, const char *name, int search_flags, double     *out_val);
-int av_opt_get_q     (void *obj, const char *name, int search_flags, AVRational *out_val);
+int av_opt_get         (void *obj, const char *name, int search_flags, uint8_t   **out_val);
+int av_opt_get_int     (void *obj, const char *name, int search_flags, int64_t    *out_val);
+int av_opt_get_double  (void *obj, const char *name, int search_flags, double     *out_val);
+int av_opt_get_q       (void *obj, const char *name, int search_flags, AVRational *out_val);
 int av_opt_get_image_size(void *obj, const char *name, int search_flags, int *w_out, int *h_out);
 int av_opt_get_pixel_fmt (void *obj, const char *name, int search_flags, enum AVPixelFormat *out_fmt);
 int av_opt_get_sample_fmt(void *obj, const char *name, int search_flags, enum AVSampleFormat *out_fmt);
 int av_opt_get_video_rate(void *obj, const char *name, int search_flags, AVRational *out_val);
-int av_opt_get_channel_layout(void *obj, const char *name, int search_flags, int64_t *ch_layout);
+/**
+ * @param[out] layout The returned layout is a copy of the actual value and must
+ * be freed with av_channel_layout_uninit() by the caller
+ */
+int av_opt_get_chlayout(void *obj, const char *name, int search_flags, AVChannelLayout *layout);
+/**
+ * @param[out] out_val The returned dictionary is a copy of the actual value and must
+ * be freed with av_dict_free() by the caller
+ */
+int av_opt_get_dict_val(void *obj, const char *name, int search_flags, AVDictionary **out_val);
+
+/**
+ * For an array-type option, get the number of elements in the array.
+ */
+int av_opt_get_array_size(void *obj, const char *name, int search_flags,
+                          unsigned int *out_val);
+
+/**
+ * For an array-type option, retrieve the values of one or more array elements.
+ *
+ * @param start_elem index of the first array element to retrieve
+ * @param nb_elems number of array elements to retrieve; start_elem+nb_elems
+ *                 must not be larger than array size as returned by
+ *                 av_opt_get_array_size()
+ *
+ * @param out_type Option type corresponding to the desired output.
+ *
+ *                 The array elements produced by this function will
+ *                 will be as if av_opt_getX() was called for each element,
+ *                 where X is specified by out_type. E.g. AV_OPT_TYPE_STRING
+ *                 corresponds to av_opt_get().
+ *
+ *                 Typically this should be the same as the scalarized type of
+ *                 the AVOption being retrieved, but certain conversions are
+ *                 also possible - the same as those done by the corresponding
+ *                 av_opt_get*() function. E.g. any option type can be retrieved
+ *                 as a string, numeric types can be retrieved as int64, double,
+ *                 or rational, etc.
+ *
+ * @param out_val  Array with nb_elems members into which the output will be
+ *                 written. The array type must match the underlying C type as
+ *                 documented for out_type, and be zeroed on entry to this
+ *                 function.
+ *
+ *                 For dynamically allocated types (strings, binary, dicts,
+ *                 etc.), the result is owned and freed by the caller.
+ */
+int av_opt_get_array(void *obj, const char *name, int search_flags,
+                     unsigned int start_elem, unsigned int nb_elems,
+                     enum AVOptionType out_type, void *out_val);
 /**
  * @}
  */
+
+/**
+ * @defgroup opt_eval_funcs Evaluating option strings
+ * @{
+ * This group of functions can be used to evaluate option strings
+ * and get numbers out of them. They do the same thing as av_opt_set(),
+ * except the result is written into the caller-supplied pointer.
+ *
+ * @param obj a struct whose first element is a pointer to AVClass.
+ * @param o an option for which the string is to be evaluated.
+ * @param val string to be evaluated.
+ * @param *_out value of the string will be written here.
+ *
+ * @return 0 on success, a negative number on failure.
+ */
+int av_opt_eval_flags (void *obj, const AVOption *o, const char *val, int        *flags_out);
+int av_opt_eval_int   (void *obj, const AVOption *o, const char *val, int        *int_out);
+int av_opt_eval_uint  (void *obj, const AVOption *o, const char *val, unsigned   *uint_out);
+int av_opt_eval_int64 (void *obj, const AVOption *o, const char *val, int64_t    *int64_out);
+int av_opt_eval_float (void *obj, const AVOption *o, const char *val, float      *float_out);
+int av_opt_eval_double(void *obj, const AVOption *o, const char *val, double     *double_out);
+int av_opt_eval_q     (void *obj, const AVOption *o, const char *val, AVRational *q_out);
+/**
+ * @}
+ */
+
+#if FF_API_OPT_PTR
 /**
  * Gets a pointer to the requested field in a struct.
  * This function allows accessing a struct even when its fields are moved or
@@ -713,8 +1079,77 @@ int av_opt_get_channel_layout(void *obj, const char *name, int search_flags, int
  *
  * @returns a pointer to the field, it can be cast to the correct type and read
  *          or written to.
+ *
+ * @deprecated direct access to AVOption-exported fields is not supported
  */
+attribute_deprecated
 void *av_opt_ptr(const AVClass *avclass, void *obj, const char *name);
+#endif
+
+/**
+ * Check if given option is set to its default value.
+ *
+ * Options o must belong to the obj. This function must not be called to check child's options state.
+ * @see av_opt_is_set_to_default_by_name().
+ *
+ * @param obj  AVClass object to check option on
+ * @param o    option to be checked
+ * @return     >0 when option is set to its default,
+ *              0 when option is not set its default,
+ *             <0 on error
+ */
+int av_opt_is_set_to_default(void *obj, const AVOption *o);
+
+/**
+ * Check if given option is set to its default value.
+ *
+ * @param obj          AVClass object to check option on
+ * @param name         option name
+ * @param search_flags combination of AV_OPT_SEARCH_*
+ * @return             >0 when option is set to its default,
+ *                     0 when option is not set its default,
+ *                     <0 on error
+ */
+int av_opt_is_set_to_default_by_name(void *obj, const char *name, int search_flags);
+
+/**
+ * Check whether a particular flag is set in a flags field.
+ *
+ * @param field_name the name of the flag field option
+ * @param flag_name the name of the flag to check
+ * @return non-zero if the flag is set, zero if the flag isn't set,
+ *         isn't of the right type, or the flags field doesn't exist.
+ */
+int av_opt_flag_is_set(void *obj, const char *field_name, const char *flag_name);
+
+#define AV_OPT_SERIALIZE_SKIP_DEFAULTS              0x00000001  ///< Serialize options that are not set to default values only.
+#define AV_OPT_SERIALIZE_OPT_FLAGS_EXACT            0x00000002  ///< Serialize options that exactly match opt_flags only.
+#define AV_OPT_SERIALIZE_SEARCH_CHILDREN            0x00000004  ///< Serialize options in possible children of the given object.
+
+/**
+ * Serialize object's options.
+ *
+ * Create a string containing object's serialized options.
+ * Such string may be passed back to av_opt_set_from_string() in order to restore option values.
+ * A key/value or pairs separator occurring in the serialized value or
+ * name string are escaped through the av_escape() function.
+ *
+ * @param[in]  obj           AVClass object to serialize
+ * @param[in]  opt_flags     serialize options with all the specified flags set (AV_OPT_FLAG)
+ * @param[in]  flags         combination of AV_OPT_SERIALIZE_* flags
+ * @param[out] buffer        Pointer to buffer that will be allocated with string containing serialized options.
+ *                           Buffer must be freed by the caller when is no longer needed.
+ * @param[in]  key_val_sep   character used to separate key from value
+ * @param[in]  pairs_sep     character used to separate two pairs from each other
+ * @return                   >= 0 on success, negative on error
+ * @warning Separators cannot be neither '\\' nor '\0'. They also cannot be the same.
+ */
+int av_opt_serialize(void *obj, int opt_flags, int flags, char **buffer,
+                     const char key_val_sep, const char pairs_sep);
+
+/**
+ * @}
+ */
 
 /**
  * Free an AVOptionRanges struct and set it to NULL.
@@ -728,10 +1163,11 @@ void av_opt_freep_ranges(AVOptionRanges **ranges);
  *
  * @param flags is a bitmask of flags, undefined flags should not be set and should be ignored
  *              AV_OPT_SEARCH_FAKE_OBJ indicates that the obj is a double pointer to a AVClass instead of a full instance
+ *              AV_OPT_MULTI_COMPONENT_RANGE indicates that function may return more than one component, @see AVOptionRanges
  *
  * The result must be freed with av_opt_freep_ranges.
  *
- * @return >= 0 on success, a negative errro code otherwise
+ * @return number of components returned on success, a negative error code otherwise
  */
 int av_opt_query_ranges(AVOptionRanges **, void *obj, const char *key, int flags);
 
@@ -743,10 +1179,11 @@ int av_opt_query_ranges(AVOptionRanges **, void *obj, const char *key, int flags
  *
  * @param flags is a bitmask of flags, undefined flags should not be set and should be ignored
  *              AV_OPT_SEARCH_FAKE_OBJ indicates that the obj is a double pointer to a AVClass instead of a full instance
+ *              AV_OPT_MULTI_COMPONENT_RANGE indicates that function may return more than one component, @see AVOptionRanges
  *
  * The result must be freed with av_opt_free_ranges.
  *
- * @return >= 0 on success, a negative errro code otherwise
+ * @return number of components returned on success, a negative error code otherwise
  */
 int av_opt_query_ranges_default(AVOptionRanges **, void *obj, const char *key, int flags);
 

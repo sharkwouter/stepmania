@@ -287,7 +287,7 @@ if(WIN32)
   if(MINGW AND WITH_FFMPEG AND NOT WITH_SYSTEM_FFMPEG)
     include("${SM_CMAKE_DIR}/SetupFfmpeg.cmake")
     set(HAS_FFMPEG TRUE)
-  else()
+  elseif(SM_WIN32_ARCH STREQUAL "x64")
     # FFMPEG...it can be evil.
     find_library(LIB_SWSCALE
                  NAMES "swscale"
@@ -314,10 +314,10 @@ if(WIN32)
     get_filename_component(LIB_AVUTIL ${LIB_AVUTIL} NAME)
 
     list(APPEND SM_FFMPEG_WIN32_DLLS
-      "avcodec-55.dll"
-      "avformat-55.dll"
-      "avutil-52.dll"
-      "swscale-2.dll"
+      "avcodec-62.dll"
+      "avformat-62.dll"
+      "avutil-60.dll"
+      "swscale-9.dll"
     )
     foreach(dll ${SM_FFMPEG_WIN32_DLLS})
       file(REMOVE "${SM_PROGRAM_DIR}/${dll}")
