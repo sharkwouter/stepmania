@@ -29,6 +29,11 @@ jobs:
         run: cmake -B build
       - name: Build
         run: cmake --build build
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stepmania-ubuntu-bundled-libraries
+          path: .
 
   ubuntu-build-system:
     name: "Ubuntu: Build with system libraries"
@@ -72,6 +77,11 @@ jobs:
           -DWITH_SYSTEM_ZLIB=ON
       - name: Build
         run: cmake --build build
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stepmania-ubuntu-system-libraries
+          path: .
 
   macos-build-bundled:
     name: "macOS: Build with bundled libraries"
@@ -85,6 +95,11 @@ jobs:
         run: cmake -B build
       - name: Build
         run: cmake --build build
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stepmania-macos
+          path: .
 
   windows-build-bundled:
     name: "Windows: Build with bundled libraries"
@@ -95,3 +110,8 @@ jobs:
         run: cmake -B build
       - name: Build
         run: cmake --build build
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stepmania-windows
+          path: .
