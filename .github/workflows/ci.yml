@@ -26,9 +26,30 @@ jobs:
           libxtst-dev
           nasm
       - name: Configure
-        run: cmake -B build
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
       - name: Build
-        run: cmake --build build
+        run: |
+          cmake --build build
+          strip --strip-unneeded stepmania
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stepmania-ubuntu-bundled-libraries
+          path: |
+            Announcers
+            Background Effects
+            Background Transitions
+            BGAnimations
+            Characters
+            Courses
+            Data
+            Docs
+            NoteSkins
+            Scripts
+            Songs
+            Themes
+            stepmania
+
 
   ubuntu-build-system:
     name: "Ubuntu: Build with system libraries"
@@ -59,7 +80,7 @@ jobs:
           libxtst-dev
           ninja-build
       - name: Configure
-        run: cmake -G Ninja -B build
+        run: cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release
           -DWITH_SYSTEM_GLEW=ON
           -DWITH_SYSTEM_JPEG=ON
           -DWITH_SYSTEM_JSONCPP=ON
@@ -71,7 +92,27 @@ jobs:
           -DWITH_SYSTEM_TOMMATH=ON
           -DWITH_SYSTEM_ZLIB=ON
       - name: Build
-        run: cmake --build build
+        run: |
+          cmake --build build
+          strip --strip-unneeded stepmania
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stepmania-ubuntu-system-libraries
+          path: |
+            Announcers
+            Background Effects
+            Background Transitions
+            BGAnimations
+            Characters
+            Courses
+            Data
+            Docs
+            NoteSkins
+            Scripts
+            Songs
+            Themes
+            stepmania
 
   macos-build-bundled:
     name: "macOS: Build with bundled libraries"
@@ -82,9 +123,16 @@ jobs:
         run: |
           brew install yasm
       - name: Configure
-        run: cmake -B build
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
       - name: Build
         run: cmake --build build
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stepmania-macos
+          path: |
+            Stepmania.app
+            README.md
 
   windows-build-bundled:
     name: "Windows: Build with bundled libraries"
@@ -92,6 +140,30 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Configure
-        run: cmake -B build
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
       - name: Build
-        run: cmake --build build
+        run: cmake --build build --config Release 
+      - name: Copy build files
+        run: |
+          cp Program\Stepmania.exe .\
+          cp extern\ffmpeg\x64\bin\*.dll .\
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stepmania-windows
+          path: |
+            Announcers
+            Background Effects
+            Background Transitions
+            BGAnimations
+            Characters
+            Courses
+            Data
+            Docs
+            NoteSkins
+            Scripts
+            Songs
+            Themes
+            Stepmania.exe
+            *.dll
+
