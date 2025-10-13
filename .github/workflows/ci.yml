@@ -143,10 +143,6 @@ jobs:
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
       - name: Build
         run: cmake --build build --config Release 
-      - name: Copy build files
-        run: |
-          cp Program\Stepmania.exe .\
-          cp extern\ffmpeg\x64\bin\*.dll .\
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -164,6 +160,4 @@ jobs:
             Scripts
             Songs
             Themes
-            Stepmania.exe
-            *.dll
-
+            Program
